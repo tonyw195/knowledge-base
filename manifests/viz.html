@@ -1,0 +1,2086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MFL Competitor Intelligence — OKF Knowledge Graph</title>
+  <!-- Cytoscape.js & Marked.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.30.0/cytoscape.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --surface: #111827;
+      --surface-border: #1f2937;
+      --text: #f9fafb;
+      --text-muted: #9ca3af;
+      --accent: #3b82f6;
+      --group-color: #8b5cf6;
+      --comp-color: #0284c7;
+      --promo-color: #10b981;
+      --tag-color: #f59e0b;
+      --synergy-color: #ec4899;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    /* Header Navbar */
+    header {
+      height: 58px;
+      background: rgba(17, 24, 39, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--surface-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 20;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand h1 {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: #fff;
+    }
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      background: #1e293b;
+      color: var(--text-muted);
+      border: 1px solid #334155;
+    }
+    /* Toolbar Controls */
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .search-input {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      width: 220px;
+      outline: none;
+      transition: all 0.2s;
+    }
+    .search-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+    select, button {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      outline: none;
+      transition: all 0.2s;
+    }
+    select:hover, button:hover {
+      background: #334155;
+      border-color: #475569;
+    }
+    /* Main Layout */
+    .main-container {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+    }
+    #cy {
+      flex: 1;
+      height: 100%;
+      background: radial-gradient(circle at 50% 50%, #111827 0%, #0b0f19 100%);
+    }
+    /* Legend */
+    .legend {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(17, 24, 39, 0.9);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--surface-border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 11px;
+      z-index: 10;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      opacity: 0.9;
+    }
+    .legend-item:hover { opacity: 1; }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    /* Detail Sidebar Drawer */
+    #sidebar {
+      width: 440px;
+      background: var(--surface);
+      border-left: 1px solid var(--surface-border);
+      height: 100%;
+      overflow-y: auto;
+      padding: 24px;
+      display: none;
+      z-index: 30;
+      box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+      animation: slideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes slideIn {
+      from { transform: translateX(100%); }
+      to { transform: translateX(0); }
+    }
+    .close-btn {
+      float: right;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 2px 6px;
+    }
+    .close-btn:hover { color: #fff; }
+    .node-header {
+      margin-bottom: 16px;
+    }
+    .node-type-pill {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+    .type-corporate_group { background: rgba(139, 92, 246, 0.2); color: #c4b5fd; border: 1px solid #8b5cf6; }
+    .type-competitor { background: rgba(2, 132, 199, 0.2); color: #7dd3fc; border: 1px solid #0284c7; }
+    .type-promotion { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid #10b981; }
+    .type-tag { background: rgba(245, 158, 11, 0.2); color: #fcd34d; border: 1px solid #f59e0b; }
+    .node-title {
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.3;
+      color: #fff;
+    }
+    .meta-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 12px;
+    }
+    .meta-table td {
+      padding: 6px 0;
+      border-bottom: 1px solid #1f2937;
+    }
+    .meta-table td:first-child {
+      color: var(--text-muted);
+      width: 32%;
+      font-weight: 500;
+    }
+    .meta-table td:last-child {
+      color: #e2e8f0;
+      word-break: break-all;
+    }
+    .meta-table a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .meta-table a:hover { text-decoration: underline; }
+    /* Markdown Body */
+    .markdown-body {
+      font-size: 13px;
+      line-height: 1.6;
+      color: #cbd5e1;
+      border-top: 1px solid #1f2937;
+      padding-top: 16px;
+      margin-top: 16px;
+    }
+    .markdown-body h2 { font-size: 15px; margin: 16px 0 8px 0; color: #f1f5f9; }
+    .markdown-body h3 { font-size: 13px; margin: 12px 0 6px 0; color: #e2e8f0; }
+    .markdown-body p { margin-bottom: 10px; }
+    .markdown-body ul { padding-left: 20px; margin-bottom: 12px; }
+    .markdown-body li { margin-bottom: 4px; }
+    .markdown-body blockquote {
+      border-left: 3px solid var(--accent);
+      padding: 6px 12px;
+      background: #1e293b;
+      border-radius: 0 4px 4px 0;
+      margin: 12px 0;
+      font-style: italic;
+    }
+    .connections-section {
+      margin-top: 20px;
+      border-top: 1px solid #1f2937;
+      padding-top: 16px;
+    }
+    .connections-section h4 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    .conn-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 12px;
+      color: #e2e8f0;
+      cursor: pointer;
+      margin: 3px 4px 3px 0;
+      transition: all 0.15s;
+    }
+    .conn-pill:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <h1>MFL Competitor Intelligence — OKF Knowledge Graph</h1>
+      <span class="badge">31 Nodes</span>
+      <span class="badge">110 Edges</span>
+    </div>
+    <div class="controls">
+      <input type="text" id="search" class="search-input" placeholder="Search concepts, tags, promos...">
+      <select id="layout-select">
+        <option value="cose">Force-Directed (CoSE)</option>
+        <option value="concentric">Concentric</option>
+        <option value="breadthfirst">Hierarchical</option>
+        <option value="circle">Circle</option>
+      </select>
+      <button id="btn-fit">Fit View</button>
+      <button id="btn-reset">Reset</button>
+    </div>
+  </header>
+
+  <div class="main-container">
+    <div id="cy"></div>
+
+    <div class="legend">
+      <div class="legend-item"><span class="dot" style="background:var(--group-color);"></span> Corporate Group</div>
+      <div class="legend-item"><span class="dot" style="background:var(--comp-color);"></span> Competitor</div>
+      <div class="legend-item"><span class="dot" style="background:var(--promo-color);"></span> OKF Promotion</div>
+      <div class="legend-item"><span class="dot" style="background:var(--tag-color);"></span> Taxonomy Tag</div>
+      <div class="legend-item"><span class="dot" style="background:var(--synergy-color);"></span> Platform Synergy</div>
+    </div>
+
+    <div id="sidebar">
+      <button class="close-btn" id="btn-close">&times;</button>
+      <div id="sidebar-content"></div>
+    </div>
+  </div>
+
+  <script>
+    const GRAPH_ELEMENTS = [
+  {
+    "data": {
+      "id": "group:constellation",
+      "label": "Constellation Automotive Group",
+      "node_type": "corporate_group",
+      "name": "Constellation Automotive Group",
+      "description": "Parent company of BCA, cinch, and Aston Barclay (acquired). Coordinates unified logistics and inventory pipelines."
+    }
+  },
+  {
+    "data": {
+      "id": "group:cox-automotive",
+      "label": "Cox Automotive UK",
+      "node_type": "corporate_group",
+      "name": "Cox Automotive UK",
+      "description": "Global remarketing group operating Manheim and co-owning Dealer Auction (joint venture with Auto Trader UK)."
+    }
+  },
+  {
+    "data": {
+      "id": "comp:bca",
+      "label": "British Car Auctions",
+      "node_type": "competitor",
+      "slug": "bca",
+      "name": "British Car Auctions",
+      "primary_url": "https://www.bca.co.uk/",
+      "buyer_portal_url": "https://www.bca.co.uk/buying/buying-with-bca",
+      "news_url": "https://www.bca.co.uk/news",
+      "priority_channels": [
+        "linkedin",
+        "news_url"
+      ],
+      "socials": {
+        "linkedin": "https://www.linkedin.com/company/bca-europe/posts/?feedView=all",
+        "x": "https://x.com/BCA_Auctions",
+        "facebook": "https://www.facebook.com/BritishCarAuctions"
+      }
+    }
+  },
+  {
+    "data": {
+      "id": "comp:carwow",
+      "label": "Carwow (Dealer / B2B Division)",
+      "node_type": "competitor",
+      "slug": "carwow",
+      "name": "Carwow (Dealer / B2B Division)",
+      "primary_url": "https://www.carwow.co.uk/",
+      "buyer_portal_url": "https://www.carwow.co.uk/partners/auctions",
+      "news_url": "https://www.carwow.co.uk/sell-my-car/dealer-news",
+      "priority_channels": [
+        "linkedin",
+        "news_url"
+      ],
+      "socials": {
+        "linkedin": "https://www.linkedin.com/company/carwow/posts/?feedView=all",
+        "x": "https://x.com/carwowuk",
+        "facebook": "https://www.facebook.com/carwowuk"
+      }
+    }
+  },
+  {
+    "data": {
+      "id": "comp:dealer-auction",
+      "label": "Dealer Auction",
+      "node_type": "competitor",
+      "slug": "dealer-auction",
+      "name": "Dealer Auction",
+      "primary_url": "https://www.dealerauction.co.uk/about-us/",
+      "buyer_portal_url": "https://www.dealerauction.co.uk/about-us/for-buyers",
+      "news_url": "https://www.dealerauction.co.uk/news/",
+      "priority_channels": [
+        "linkedin",
+        "buyer_portal_url"
+      ],
+      "socials": {
+        "linkedin": "https://www.linkedin.com/company/dealer-auction-co-uk/posts/?feedView=all",
+        "x": "https://x.com/DealerAuctionUK"
+      }
+    }
+  },
+  {
+    "data": {
+      "id": "comp:motorway",
+      "label": "Motorway (Pro for Dealers)",
+      "node_type": "competitor",
+      "slug": "motorway",
+      "name": "Motorway (Pro for Dealers)",
+      "primary_url": "https://pro.motorway.co.uk/",
+      "buyer_portal_url": "https://pro.motorway.co.uk/signup",
+      "news_url": "https://motorway.co.uk/press",
+      "priority_channels": [
+        "linkedin",
+        "news_url",
+        "blog_url"
+      ],
+      "socials": {
+        "linkedin": "https://www.linkedin.com/company/motorway-online-ltd./posts/?feedView=all",
+        "x": "https://x.com/motorway",
+        "facebook": "https://www.facebook.com/motorway.co.uk"
+      }
+    }
+  },
+  {
+    "data": {
+      "id": "comp:manheim",
+      "label": "Manheim / Cox Automotive UK",
+      "node_type": "competitor",
+      "slug": "manheim",
+      "name": "Manheim / Cox Automotive UK",
+      "primary_url": "https://www.manheim.co.uk/",
+      "buyer_portal_url": "https://www.manheim.co.uk/buying/buyer-fees",
+      "news_url": "https://www.coxautoinc.eu/",
+      "priority_channels": [
+        "linkedin",
+        "buyer_portal_url"
+      ],
+      "socials": {
+        "linkedin": "https://www.linkedin.com/company/cox-automotive-uk",
+        "x": "https://x.com/ManheimUK",
+        "facebook": "https://www.facebook.com/ManheimUK"
+      }
+    }
+  },
+  {
+    "data": {
+      "id": "comp:aston-barclay",
+      "label": "Aston Barclay",
+      "node_type": "competitor",
+      "slug": "aston-barclay",
+      "name": "Aston Barclay",
+      "primary_url": "https://www.astonbarclay.net/",
+      "buyer_portal_url": "https://www.astonbarclay.net/services/buying-with-aston-barclay",
+      "news_url": "https://www.astonbarclay.net/news",
+      "priority_channels": [
+        "linkedin",
+        "news_url"
+      ],
+      "socials": {
+        "linkedin": "https://www.linkedin.com/company/aston-barclay-group",
+        "x": "https://x.com/AstonBarclay",
+        "facebook": "https://www.facebook.com/AstonBarclayUK"
+      }
+    }
+  },
+  {
+    "data": {
+      "id": "tag:buyer_fee_discount",
+      "label": "#buyer_fee_discount",
+      "node_type": "tag",
+      "name": "buyer_fee_discount",
+      "category": "Fees"
+    }
+  },
+  {
+    "data": {
+      "id": "tag:fee_waiver",
+      "label": "#fee_waiver",
+      "node_type": "tag",
+      "name": "fee_waiver",
+      "category": "Fees"
+    }
+  },
+  {
+    "data": {
+      "id": "tag:subscription_free",
+      "label": "#subscription_free",
+      "node_type": "tag",
+      "name": "subscription_free",
+      "category": "Fees"
+    }
+  },
+  {
+    "data": {
+      "id": "tag:tier_volume_discount",
+      "label": "#tier_volume_discount",
+      "node_type": "tag",
+      "name": "tier_volume_discount",
+      "category": "Fees"
+    }
+  },
+  {
+    "data": {
+      "id": "tag:transport_subsidy",
+      "label": "#transport_subsidy",
+      "node_type": "tag",
+      "name": "transport_subsidy",
+      "category": "Logistics"
+    }
+  },
+  {
+    "data": {
+      "id": "tag:fixed_rate_delivery",
+      "label": "#fixed_rate_delivery",
+      "node_type": "tag",
+      "name": "fixed_rate_delivery",
+      "category": "Logistics"
+    }
+  },
+  {
+    "data": {
+      "id": "tag:collection_service",
+      "label": "#collection_service",
+      "node_type": "tag",
+      "name": "collection_service",
+      "category": "Logistics"
+    }
+  },
+  {
+    "data": {
+      "id": "tag:buyer_indemnity",
+      "label": "#buyer_indemnity",
+      "node_type": "tag",
+      "name": "buyer_indemnity",
+      "category": "Risk & Trust"
+    }
+  },
+  {
+    "data": {
+      "id": "tag:assured_inspection",
+      "label": "#assured_inspection",
+      "node_type": "tag",
+      "name": "assured_inspection",
+      "category": "Risk & Trust"
+    }
+  },
+  {
+    "data": {
+      "id": "tag:fault_guarantee",
+      "label": "#fault_guarantee",
+      "node_type": "tag",
+      "name": "fault_guarantee",
+      "category": "Risk & Trust"
+    }
+  },
+  {
+    "data": {
+      "id": "tag:sign_up_bonus",
+      "label": "#sign_up_bonus",
+      "node_type": "tag",
+      "name": "sign_up_bonus",
+      "category": "Onboarding & Incentives"
+    }
+  },
+  {
+    "data": {
+      "id": "tag:first_purchase_credit",
+      "label": "#first_purchase_credit",
+      "node_type": "tag",
+      "name": "first_purchase_credit",
+      "category": "Onboarding & Incentives"
+    }
+  },
+  {
+    "data": {
+      "id": "tag:trader_onboarding",
+      "label": "#trader_onboarding",
+      "node_type": "tag",
+      "name": "trader_onboarding",
+      "category": "Onboarding & Incentives"
+    }
+  },
+  {
+    "data": {
+      "id": "tag:extended_bidding_window",
+      "label": "#extended_bidding_window",
+      "node_type": "tag",
+      "name": "extended_bidding_window",
+      "category": "Auction Mechanics"
+    }
+  },
+  {
+    "data": {
+      "id": "tag:hidden_reserve",
+      "label": "#hidden_reserve",
+      "node_type": "tag",
+      "name": "hidden_reserve",
+      "category": "Auction Mechanics"
+    }
+  },
+  {
+    "data": {
+      "id": "tag:instant_settlement",
+      "label": "#instant_settlement",
+      "node_type": "tag",
+      "name": "instant_settlement",
+      "category": "Auction Mechanics"
+    }
+  },
+  {
+    "data": {
+      "id": "promo:promo-bca-a7083b",
+      "label": "BCA Tiered Volume Loyalt\u2026",
+      "node_type": "promotion",
+      "competitor": "bca",
+      "title": "BCA Tiered Volume Loyalty Scheme & Consolidated Multi-Vehicle Logistics",
+      "summary": "BCA Tiered Loyalty Volume Discount & Consolidated Multi-Vehicle Logistics: BCA operates a volume-tiered trade buyer scheme (Blue, Silver, Gold, Platinum) where active dealers purchasing 75+ to 1,000+ units annually unlock scaled reductions in buyer premium fees, discounted logistics, and extended site storage grace periods. In addition, MyBCA features multi-vehicle consolidated delivery booking for up to 10 vehicles across different branches, alongside the mandatory BCA Assured 40+ point inspection report.",
+      "canonical_url": "https://www.bca.co.uk/buying/buying-with-bca",
+      "content_hash": "a7083b9c7a919a877d696a94bfe74426",
+      "status": "active",
+      "active": true,
+      "valid_until": "2026-12-31",
+      "stale_after": "2026-12-31T23:59:59Z",
+      "filepath": "okf-repository/competitors/bca/promo-bca-a7083b.md",
+      "raw_body": "# BCA Tiered Volume Loyalty Scheme & Consolidated Multi-Vehicle Logistics\n\nBritish Car Auctions (BCA) operates an account-tiered loyalty volume structure (Blue, Silver, Gold, Platinum) designed to retain high-volume remarketing trade buyers through scaled fee discounts, logistics concessions, and extended site grace periods.[^bca-buyer-portal]\n\n## Core Buyer Incentives & Volume Tiers\n* **Incentive Type:** Tiered Volume Buyer Fee Discount & Consolidated Transport Booking\n* **Tier Structure (Rolling 12-Month Volume):**\n  * *Standard / Blue Tier:* Baseline entry tier for occasional buyers; incurs highest scale of buyer's premium fees.[^bca-buyer-portal]\n  * *Silver Tier (~75+ units/year):* Step-down reduction in per-vehicle buyer premium fees.[^bca-transport-logistics]\n  * *Gold & Platinum Tiers (~300\u20131,000+ units/year):* Maximum reduction in buyer fee schedules per hammer price band, dedicated account managers, and extended collection/storage grace windows.[^bca-buyer-portal]\n* **Consolidated Logistics Incentive (MyBCA Delivery):**\n  * Trade buyers can consolidate delivery bookings for up to **10 vehicles** in a single delivery run, even when vehicles originate across multiple auction branches, provided they drop at a single dealership destination.[^bca-transport-logistics]\n* **Inspection & Assurance Mechanism (BCA Assured):**\n  * Mandatory 40+ point mechanical and electrical condition check on eligible vehicles aged under 8 years and under 120,000 miles, providing pre-sale fault verification.[^bca-buyer-portal]\n\n## Operational Rules & Conditions\n* **Account Verification:** Rates and volume status are recalculated on a rolling 12-month purchase volume cycle via the MyBCA dashboard.\n* **Ancillary Fees:** Standard V5C processing (\u00a326 incl. VAT) and online bidding platform fees apply across all auction sales.\n* **Settlement Timelines:** Post-sale payment required within 2\u20134 days; collection within 4\u20135 business days to avoid site storage penalties.\n\n## Verbatim Intel Hash Excerpt\n> \"BCA Tiered Loyalty Volume Discount & Consolidated Multi-Vehicle Logistics: BCA operates a volume-tiered trade buyer scheme (Blue, Silver, Gold, Platinum) where active dealers purchasing 75+ to 1,000+ units annually unlock scaled reductions in buyer premium fees, discounted logistics, and extended site storage grace periods. In addition, MyBCA features multi-vehicle consolidated delivery booking for up to 10 vehicles across different branches, alongside the mandatory BCA Assured 40+ point inspection report.\"\n"
+    }
+  },
+  {
+    "data": {
+      "id": "promo:promo-motorway-bb6594",
+      "label": "Motorway Move Logistics \u2026",
+      "node_type": "promotion",
+      "competitor": "motorway",
+      "title": "Motorway Move Logistics Subsidies & Motorway Pay Buyer Fee Advantage",
+      "summary": "Motorway Move Logistics & Motorway Pay Buyer Fee Advantage: Motorway offers dealers nationwide integrated delivery via Motorway Move starting from \u00a389\u2013\u00a399 with professional on-site vehicle inspection. When using Motorway Pay, dealer purchase fees are calculated on the final negotiated price rather than the initial winning bid price, saving fees on re-appraisals.",
+      "canonical_url": "https://pro.motorway.co.uk/pricing",
+      "content_hash": "bb6594741d6a262dfb6a420637d4a789",
+      "status": "active",
+      "active": true,
+      "valid_until": "2026-12-31",
+      "stale_after": "2026-12-31T23:59:59Z",
+      "filepath": "okf-repository/competitors/motorway/promo-motorway-bb6594.md",
+      "raw_body": "# Motorway Move Logistics Subsidies & Motorway Pay Buyer Fee Advantage\n\nMotorway provides competitive logistics solutions through **Motorway Move** alongside fee reduction incentives linked to **Motorway Pay** for verified trade dealers.[^motorway-pricing-schedule]\n\n## Core Incentives & Operational Advantages\n* **Incentive Type:** Transport Logistics Tariff & Purchase Fee Calculation Discount\n* **Transport Pricing (Motorway Move):** Nationwide vehicle collection and delivery with professional on-site physical appraisal starting from **\u00a389\u2013\u00a399**, providing dealers with turn-key logistics direct from private seller driveways.[^motorway-press-move]\n* **Purchase Fee Structure Incentive (Motorway Pay):**\n  * *Standard Transactions:* Dealer purchase fee is calculated against the initial **winning bid price**.[^motorway-pricing-schedule]\n  * *Motorway Pay Transactions:* Purchase fee is calculated strictly on the **final agreed purchase price** after any on-site condition renegotiations or adjustments, directly saving dealers fee expenditure on imperfect stock.[^motorway-pricing-schedule]\n* **Platform Access Fee:** \u00a30 monthly or annual subscription fee for verified trade buyers.\n\n## Auction Mechanics & Trading Window\n* **Extended Daily Live Sales:** Bidding opens at 7:00 PM the evening prior and runs continuously until 3:30 PM the following day, allowing out-of-hours appraisal and bidding.[^motorway-press-move]\n* **Instant Digital Settlement:** Integrated escrow digital wallet releases payment directly to consumers and auto-settles outstanding vehicle finance.\n\n## Verbatim Intel Hash Excerpt\n> \"Motorway Move Logistics & Motorway Pay Buyer Fee Advantage: Motorway offers dealers nationwide integrated delivery via Motorway Move starting from \u00a389\u2013\u00a399 with professional on-site vehicle inspection. When using Motorway Pay, dealer purchase fees are calculated on the final negotiated price rather than the initial winning bid price, saving fees on re-appraisals.\"\n"
+    }
+  },
+  {
+    "data": {
+      "id": "promo:promo-carwow-387392",
+      "label": "Carwow BuySafe Mechanica\u2026",
+      "node_type": "promotion",
+      "competitor": "carwow",
+      "title": "Carwow BuySafe Mechanical Protection, Reserve-Free Bidding & Retail Listings",
+      "summary": "Carwow BuySafe Mechanical Fault Protection: \u00a359+VAT flat fee per vehicle for dealers using self-collection or independent transport, providing up to \u00a37,500 coverage across 3,000 components for 5 days. Paired with daily auction removal of traditional reserve prices in favour of retail benchmark valuations, free retail listings per purchased car, and IMDA member buyer fee discounts.",
+      "canonical_url": "https://www.carwow.co.uk/partners/buysafe",
+      "content_hash": "387392c5e50a49ebef002d33e7706574",
+      "status": "active",
+      "active": true,
+      "valid_until": "2026-12-31",
+      "stale_after": "2026-12-31T23:59:59Z",
+      "filepath": "okf-repository/competitors/carwow/promo-carwow-387392.md",
+      "raw_body": "# Carwow BuySafe Mechanical Protection, Reserve-Free Bidding & Retail Listings\n\nCarwow operates supplementary buyer risk mitigation under its **BuySafe** scheme alongside fundamental updates to daily auction mechanics and dealer onboarding incentives.[^carwow-buysafe-protection]\n\n## Core Offer & Risk Mitigation (BuySafe Scheme)\n* **Incentive Type:** Component Fault Warranty & Self-Collection Risk Mitigation\n* **Target Audience:** Independent dealers opting for self-collection or third-party vehicle transport rather than integrated *Carwow Collects* delivery.[^carwow-buysafe-protection]\n* **Cost & Tariff:** Flat fee of **\u00a359 + VAT** per vehicle.\n* **Coverage Scope:** Grants up to **\u00a37,500 protection per claim** covering approximately 3,000 components (engine, gearbox, electricals, and infotainment) for **5 days** following vehicle delivery or collection.[^carwow-buysafe-protection]\n* **Strategic Complement:** Provides a lower-cost protection alternative for buyers who do not need full *Carwow Collects* transport (\u00a325,000 Assured Scheme).\n\n## Auction Mechanics & B2B Commercial Incentives\n* **Reserve-Free Bidding Evolution:** Daily auctions transitioned away from traditional displayed seller reserve prices, embedding dynamic retail benchmark valuations (Auto Trader and Brego) directly on auction listings to accelerate bid volumes.[^cardealer-carwow-reserve-removal]\n* **Free Used Retail Listings:** Enrolled dealers earn complimentary used-car classified advertising listings on Carwow\u2019s consumer retail marketplace for every vehicle successfully acquired through daily auctions.[^cardealer-carwow-reserve-removal]\n* **IMDA Member Onboarding Advantage:** Members of the Independent Motor Dealers Association (IMDA) receive an exclusive **75% discount on their first auction purchase fee** upon joining the platform.[^carwow-imda-partnership]\n\n## Verbatim Intel Hash Excerpt\n> \"Carwow BuySafe Mechanical Fault Protection: \u00a359+VAT flat fee per vehicle for dealers using self-collection or independent transport, providing up to \u00a37,500 coverage across 3,000 components for 5 days. Paired with daily auction removal of traditional reserve prices in favour of retail benchmark valuations, free retail listings per purchased car, and IMDA member buyer fee discounts.\"\n"
+    }
+  },
+  {
+    "data": {
+      "id": "promo:promo-carwow-d6ad87",
+      "label": "Carwow Collects & Assure\u2026",
+      "node_type": "promotion",
+      "competitor": "carwow",
+      "title": "Carwow Collects & Assured Transport Protection Scheme",
+      "summary": "Carwow Collects & Assured Transport Scheme: Integrated vehicle logistics and appraisal service for dealer auction purchases. Offers reduced transport tariffs across mainland UK combined with the Assured Scheme providing up to \u00a325,000 protection against undisclosed mechanical or electrical faults, mileage discrepancies, cloning, or title issues.",
+      "canonical_url": "https://www.carwow.co.uk/partners/auctions",
+      "content_hash": "d6ad874a941ab0b5f744dd93c06b5ed7",
+      "status": "active",
+      "active": true,
+      "valid_until": "2026-12-31",
+      "stale_after": "2026-12-31T23:59:59Z",
+      "filepath": "okf-repository/competitors/carwow/promo-carwow-d6ad87.md",
+      "raw_body": "# Carwow Collects & Assured Transport Protection Scheme\n\nCarwow provides an integrated vehicle logistics, physical appraisal, and buyer protection programme branded as **Carwow Collects** for its dealer auction partners.[^carwow-auctions-portal]\n\n## Core Offer & Incentive Details\n* **Incentive Type:** Transport Logistics & Risk Mitigation (Assured Scheme)\n* **Buyer Fee Subsidy:** Reduced transportation tariffs for mainland UK vehicle movements managed directly through the Carwow logistics portal.[^carwow-b2b-updates]\n* **Risk Guarantee / Protection Value:** Includes the **Assured Scheme**, granting trade buyers up to **\u00a325,000 indemnity protection** per vehicle against undisclosed mechanical or electrical defects, mileage discrepancies (clocking), cloning, and insurance write-off status.[^carwow-b2b-updates]\n* **Platform Access Fee:** \u00a30 subscription fee. Dealers pay only standard tiered buyer fees upon winning an auction bid.\n\n## Operational & Eligibility Requirements\n* **Eligibility:** Available to all accredited UK dealer partners participating in daily auctions.\n* **Appraisal Process:** Transport agents conduct standardized multi-point visual and mechanical condition reports at seller collection point prior to vehicle handover.[^carwow-auctions-portal]\n* **Validity:** Ongoing active logistics programme throughout 2026.\n\n## Verbatim Intel Hash Excerpt\n> \"Carwow Collects & Assured Transport Scheme: Integrated vehicle logistics and appraisal service for dealer auction purchases. Offers reduced transport tariffs across mainland UK combined with the Assured Scheme providing up to \u00a325,000 protection against undisclosed mechanical or electrical faults, mileage discrepancies, cloning, or title issues.\"\n"
+    }
+  },
+  {
+    "data": {
+      "id": "promo:promo-manheim-2a7427",
+      "label": "Manheim Advantage Club T\u2026",
+      "node_type": "promotion",
+      "competitor": "manheim",
+      "title": "Manheim Advantage Club Tiers, SureCheck 7-Day Guarantee & Fast Track Logistics",
+      "summary": "Manheim Advantage Club Tiers, SureCheck 7-Day Guarantee & Fast Track Logistics: Manheim (Cox Automotive UK) operates a volume-tiered trade buyer scheme (Advantage, Club, Club+) providing scaled reductions on buyer fees, zero joining fees, and dedicated account management. Backed by the SureCheck inspection scheme (Bronze, Silver, Gold, EV) offering free defect rectification with a 7-day or 250-mile claims window, alongside nationwide fast track vehicle delivery and 3 days of complimentary site storage.",
+      "canonical_url": "https://www.manheim.co.uk/",
+      "content_hash": "2a74277d2a9458608d652e3e44af6c61",
+      "status": "active",
+      "active": true,
+      "valid_until": "2026-12-31",
+      "stale_after": "2026-12-31T23:59:59Z",
+      "filepath": "okf-repository/competitors/manheim/promo-manheim-2a7427.md",
+      "raw_body": "# Manheim Advantage Club Tiers, SureCheck 7-Day Guarantee & Fast Track Logistics\n\nManheim (the core remarketing division of Cox Automotive UK) operates a structured buyer incentive program based on purchase-volume account tiers, free pre-auction condition guarantees, and nationwide transport logistics.[^manheim-portal]\n\n## Core Buyer Incentives & Volume Tier Structure\n* **Incentive Type:** Tiered Volume Buyer Fee Discounts, Inspection Guarantee & Logistics Storage\n* **Tiered Account Loyalty Structure:**\n  * *Advantage Tier (1\u20133 vehicles/year):* Baseline registration tier for occasional traders.[^manheim-portal]\n  * *Club Tier (4\u201314 vehicles/year):* Unlocks reduced buyer premium tariffs across physical in-lane and digital sales.[^manheim-portal]\n  * *Club+ Tier (15+ vehicles/year):* Maximum reduction in per-vehicle buyer fees, dedicated Buyer Services account management, and discounted SureCheck rates.[^manheim-portal]\n* **Account Fee Waivers:** \u00a30 joining fee for new trade accounts and \u00a30 annual account maintenance fees.\n\n## Risk Mitigation & Condition Guarantee (SureCheck Scheme)\n* **SureCheck Inspection Scheme:** Pre-sale mechanical condition verification across multiple cover tiers: Bronze, Silver, Gold, LCV, and dedicated EV (covering high-voltage systems and drivetrains).[^cox-automotive-uk]\n* **Fault Rectification Promise:** If a vehicle is found to exhibit a mechanical or electrical defect contrary to the inspection report, Manheim covers the repair cost free of charge.[^manheim-portal]\n* **Industry-Leading SLA:** Offers an extended **7-day or 250-mile claims window** following purchase to report condition discrepancies.[^cox-automotive-uk]\n\n## Logistics, Delivery & Storage Concessions\n* **Fast Track Delivery:** Nationwide vehicle transport operated by Manheim Vehicle Services, moving single vehicles or full loads directly from any auction centre to mainland UK destinations.[^cox-automotive-uk]\n* **Complimentary Site Storage:** Trade buyers receive **3 working days of free vehicle storage** following sale date once payment has cleared before daily storage charges commence.[^manheim-portal]\n\n## Strategic Synergy Note\nManheim's SureCheck system also powers the condition guarantee engine for **Dealer Auction** (their joint venture with Auto Trader), creating a unified remarketing standard across both platforms.\n\n## Verbatim Intel Hash Excerpt\n> \"Manheim Advantage Club Tiers, SureCheck 7-Day Guarantee & Fast Track Logistics: Manheim (Cox Automotive UK) operates a volume-tiered trade buyer scheme (Advantage, Club, Club+) providing scaled reductions on buyer fees, zero joining fees, and dedicated account management. Backed by the SureCheck inspection scheme (Bronze, Silver, Gold, EV) offering free defect rectification with a 7-day or 250-mile claims window, alongside nationwide fast track vehicle delivery and 3 days of complimentary site storage.\"\n"
+    }
+  },
+  {
+    "data": {
+      "id": "promo:promo-dealer-auction-484ddd",
+      "label": "Dealer Auction 30-Day Fr\u2026",
+      "node_type": "promotion",
+      "competitor": "dealer-auction",
+      "title": "Dealer Auction 30-Day Free Trial, \u00a3250 Buyer Fee Advantage & SureCheck Guarantee",
+      "summary": "Dealer Auction 30-Day Free Trial, \u00a3250 Buyer Fee Advantage & SureCheck Guarantee: Dealer Auction offers independent motor traders a 30-day free trial of its digital remarketing platform (saving the standard \u00a399/mo subscription) with zero subscription fees for Auto Trader and NextGear Capital contract dealers. Features average buyer fee savings of \u00a3250 per vehicle compared to physical auctions, alongside the SureCheck fault guarantee (Bronze, Silver, Gold, EV) covering repair costs for undisclosed condition discrepancies.",
+      "canonical_url": "https://www.dealerauction.co.uk/",
+      "content_hash": "484ddd5445ae10a8b6aacd40111a3b94",
+      "status": "active",
+      "active": true,
+      "valid_until": "2026-12-31",
+      "stale_after": "2026-12-31T23:59:59Z",
+      "filepath": "okf-repository/competitors/dealer-auction/promo-dealer-auction-484ddd.md",
+      "raw_body": "# Dealer Auction 30-Day Free Trial, \u00a3250 Buyer Fee Advantage & SureCheck Guarantee\n\nDealer Auction (a joint venture between Auto Trader and Cox Automotive) offers competitive incentives for independent motor traders, combining digital buyer fee savings against traditional auction houses with comprehensive condition guarantees.[^dealer-auction-platform]\n\n## Core Buyer Incentives & Fee Advantages\n* **Incentive Type:** Onboarding Free Trial, Buyer Fee Discount & Condition Guarantee\n* **Buyer Fee Cost Savings:** Highlights an average saving of **\u00a3250 per transaction** in buyer fees compared to physical auction halls.[^dealer-auction-platform]\n* **Onboarding Trial Incentive:** \n  * **30-Day Free Trial:** New independent motor dealers receive 30 days of full platform access with \u00a30 subscription fee (saving the standard \u00a399 + VAT/month fee) on a rolling no-contract agreement.[^dealer-auction-platform]\n* **Partner Subscription Waivers:**\n  * Dealers with an **Auto Trader advertising contract** or a **NextGear Capital stocking facility** receive platform access with **\u00a30 ongoing subscription fees**.[^dealer-auction-platform]\n* **Disposal / Seller Concession:** Enrolled independent dealers receive their **first vehicle sale free** each calendar month.\n\n## Risk Mitigation & Assurance (SureCheck)\n* **SureCheck Inspection Guarantee:** Operates in direct technical partnership with Manheim to provide structured condition guarantees (Bronze, Silver, Gold, and EV coverage).[^dealer-auction-surecheck]\n* **Discrepancy Rectification:** If a purchased vehicle exhibits an undisclosed mechanical or electrical condition fault, the issue is rectified free of charge.[^dealer-auction-surecheck]\n* **Dedicated Claims SLA:** Backed by an appraisal and claims app providing 24/7 digital claim lodgement with a mandatory 48-hour resolution SLA.[^dealer-auction-surecheck]\n\n## Operating Prerequisites & Market Integration\n* **Trader Verification:** Requires active UK VAT registration and verification as a full-time motor trader.\n* **Auto Trader Market Data Integration:** Listings embed real-time Auto Trader retail metrics, including live Retail Rating and estimated \"days to sell\", to de-risk buyer margin calculations.\n\n## Verbatim Intel Hash Excerpt\n> \"Dealer Auction 30-Day Free Trial, \u00a3250 Buyer Fee Advantage & SureCheck Guarantee: Dealer Auction offers independent motor traders a 30-day free trial of its digital remarketing platform (saving the standard \u00a399/mo subscription) with zero subscription fees for Auto Trader and NextGear Capital contract dealers. Features average buyer fee savings of \u00a3250 per vehicle compared to physical auctions, alongside the SureCheck fault guarantee (Bronze, Silver, Gold, EV) covering repair costs for undisclosed condition discrepancies.\"\n"
+    }
+  },
+  {
+    "data": {
+      "id": "promo:promo-aston-barclay-bcd871",
+      "label": "Aston Barclay Tiered Buy\u2026",
+      "node_type": "promotion",
+      "competitor": "aston-barclay",
+      "title": "Aston Barclay Tiered Buyer Fees, Assured Inspection Guarantee & BCA Network Integration",
+      "summary": "Aston Barclay Tiered Buyer Fees, Assured Inspection Guarantee & BCA Network Integration: Aston Barclay operates volume-tiered buyer fees (from Standard to Elite) and the Aston Barclay Assured 31-point vehicle inspection scheme (35-point for EV/hybrid with 20m kinetic drive test) covering repair costs on undisclosed discrepancies for stock under 12 years / 120k miles. Following acquisition by Constellation Automotive Group, physical centres and digital e-Xchange 24/7 sales are integrated into the unified BCA remarketing and logistics network.",
+      "canonical_url": "https://www.astonbarclay.net/",
+      "content_hash": "bcd8718484aa05b9771bcb552b479c3b",
+      "status": "active",
+      "active": true,
+      "valid_until": "2026-12-31",
+      "stale_after": "2026-12-31T23:59:59Z",
+      "filepath": "okf-repository/competitors/aston-barclay/promo-aston-barclay-bcd871.md",
+      "raw_body": "# Aston Barclay Tiered Buyer Fees, Assured Inspection Guarantee & BCA Network Integration\n\nAston Barclay provides wholesale remarketing services across physical auction centres and digital channels, operating a volume-tiered fee schedule and structured condition guarantees, with physical and digital operations integrated under the Constellation Automotive Group (BCA) ecosystem.[^bca-constellation-network]\n\n## Core Buyer Incentives & Operational Structure\n* **Incentive Type:** Tiered Volume Buyer Fee Discounts, Inspection Guarantee & Digital Remarketing\n* **Tiered Buyer Fee Structure:**\n  * Volume-tiered buyer fee model spanning progressive purchase bands (from Standard to Elite), enabling high-turnover dealerships to unlock lower per-unit buyer premiums.[^aston-barclay-portal]\n  * Fees calculate against the gross hammer price, with rates aligned across unified Constellation/BCA network trading terms.\n* **Risk Mitigation & Condition Guarantee (Aston Barclay Assured):**\n  * **Standard Assured:** 31-point visual and mechanical condition assessment covering fluid levels, engine start, transmission, and braking performance via a 20-metre kinetic drive test.[^aston-barclay-portal]\n  * **EV & Hybrid Assured:** Expanded 35-point check including high-voltage charging cable checks and battery/drive indicators.\n  * **Fault Rectification:** Discrepancy claims submitted within 2 working days and under 250 miles of transport/collection cover agreed repair costs on undisclosed defects.[^aston-barclay-portal]\n  * **Assured Lite:** Lower-cost (\u00a310+VAT) informational check for vehicles over 12 years or 120,000 miles.\n\n## Auction Mechanics & 24/7 Digital Channels\n* **e-Xchange & Cascade System:** 24/7 digital wholesale exchange allowing trade buyers to purchase or bid on fresh inventory upstream before vehicles cascade into timed digital sales or physical lane auctions.[^aston-barclay-portal]\n* **Logistics & Delivery:** Nationwide vehicle transport ranging from single-vehicle plate delivery to multi-car transporter drops, supported by real-time telematics and digital condition verification at handover.[^aston-barclay-portal]\n\n## Strategic Market Note\nFollowing acquisition by Constellation Automotive Group, Aston Barclay physical auction locations and digital remarketing tools coordinate under the broader BCA operational and logistics umbrella, giving buyers access to unified inventory management and transport pipelines.[^bca-constellation-network]\n\n## Verbatim Intel Hash Excerpt\n> \"Aston Barclay Tiered Buyer Fees, Assured Inspection Guarantee & BCA Network Integration: Aston Barclay operates volume-tiered buyer fees (from Standard to Elite) and the Aston Barclay Assured 31-point vehicle inspection scheme (35-point for EV/hybrid with 20m kinetic drive test) covering repair costs on undisclosed discrepancies for stock under 12 years / 120k miles. Following acquisition by Constellation Automotive Group, physical centres and digital e-Xchange 24/7 sales are integrated into the unified BCA remarketing and logistics network.\"\n"
+    }
+  },
+  {
+    "data": {
+      "id": "edge_0",
+      "source": "group:constellation",
+      "target": "comp:bca",
+      "edge_type": "CONTROLS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_1",
+      "source": "group:constellation",
+      "target": "comp:aston-barclay",
+      "edge_type": "CONTROLS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_2",
+      "source": "group:cox-automotive",
+      "target": "comp:manheim",
+      "edge_type": "CONTROLS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_3",
+      "source": "group:cox-automotive",
+      "target": "comp:dealer-auction",
+      "edge_type": "CONTROLS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_4",
+      "source": "comp:bca",
+      "target": "group:constellation",
+      "edge_type": "MEMBER_OF",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_5",
+      "source": "comp:bca",
+      "target": "comp:aston-barclay",
+      "edge_type": "SYNERGY",
+      "name": "Constellation Remarketing Integration",
+      "notes": "Aston Barclay operates under Constellation Group, aligning physical lanes and transport with BCA."
+    }
+  },
+  {
+    "data": {
+      "id": "edge_6",
+      "source": "comp:bca",
+      "target": "promo:promo-bca-a7083b",
+      "edge_type": "OFFERS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_7",
+      "source": "comp:carwow",
+      "target": "promo:promo-carwow-387392",
+      "edge_type": "OFFERS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_8",
+      "source": "comp:carwow",
+      "target": "promo:promo-carwow-d6ad87",
+      "edge_type": "OFFERS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_9",
+      "source": "comp:dealer-auction",
+      "target": "group:cox-automotive",
+      "edge_type": "MEMBER_OF",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_10",
+      "source": "comp:dealer-auction",
+      "target": "comp:manheim",
+      "edge_type": "SYNERGY",
+      "name": "SureCheck Inspection Framework",
+      "notes": "Dealer Auction uses Manheim's technical SureCheck inspection engine and claims resolution framework."
+    }
+  },
+  {
+    "data": {
+      "id": "edge_11",
+      "source": "comp:dealer-auction",
+      "target": "promo:promo-dealer-auction-484ddd",
+      "edge_type": "OFFERS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_12",
+      "source": "comp:motorway",
+      "target": "promo:promo-motorway-bb6594",
+      "edge_type": "OFFERS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_13",
+      "source": "comp:manheim",
+      "target": "group:cox-automotive",
+      "edge_type": "MEMBER_OF",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_14",
+      "source": "comp:manheim",
+      "target": "comp:dealer-auction",
+      "edge_type": "SYNERGY",
+      "name": "SureCheck Inspection Framework",
+      "notes": "Dealer Auction uses Manheim's technical SureCheck inspection engine and claims resolution framework."
+    }
+  },
+  {
+    "data": {
+      "id": "edge_15",
+      "source": "comp:manheim",
+      "target": "promo:promo-manheim-2a7427",
+      "edge_type": "OFFERS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_16",
+      "source": "comp:aston-barclay",
+      "target": "group:constellation",
+      "edge_type": "MEMBER_OF",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_17",
+      "source": "comp:aston-barclay",
+      "target": "comp:bca",
+      "edge_type": "SYNERGY",
+      "name": "Constellation Remarketing Integration",
+      "notes": "Aston Barclay operates under Constellation Group, aligning physical lanes and transport with BCA."
+    }
+  },
+  {
+    "data": {
+      "id": "edge_18",
+      "source": "comp:aston-barclay",
+      "target": "promo:promo-aston-barclay-bcd871",
+      "edge_type": "OFFERS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_19",
+      "source": "tag:buyer_fee_discount",
+      "target": "promo:promo-bca-a7083b",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_20",
+      "source": "tag:buyer_fee_discount",
+      "target": "promo:promo-motorway-bb6594",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_21",
+      "source": "tag:buyer_fee_discount",
+      "target": "promo:promo-carwow-387392",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_22",
+      "source": "tag:buyer_fee_discount",
+      "target": "promo:promo-manheim-2a7427",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_23",
+      "source": "tag:buyer_fee_discount",
+      "target": "promo:promo-dealer-auction-484ddd",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_24",
+      "source": "tag:buyer_fee_discount",
+      "target": "promo:promo-aston-barclay-bcd871",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_25",
+      "source": "tag:subscription_free",
+      "target": "promo:promo-motorway-bb6594",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_26",
+      "source": "tag:subscription_free",
+      "target": "promo:promo-carwow-d6ad87",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_27",
+      "source": "tag:subscription_free",
+      "target": "promo:promo-manheim-2a7427",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_28",
+      "source": "tag:subscription_free",
+      "target": "promo:promo-dealer-auction-484ddd",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_29",
+      "source": "tag:tier_volume_discount",
+      "target": "promo:promo-bca-a7083b",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_30",
+      "source": "tag:tier_volume_discount",
+      "target": "promo:promo-manheim-2a7427",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_31",
+      "source": "tag:tier_volume_discount",
+      "target": "promo:promo-aston-barclay-bcd871",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_32",
+      "source": "tag:transport_subsidy",
+      "target": "promo:promo-bca-a7083b",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_33",
+      "source": "tag:transport_subsidy",
+      "target": "promo:promo-motorway-bb6594",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_34",
+      "source": "tag:transport_subsidy",
+      "target": "promo:promo-carwow-d6ad87",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_35",
+      "source": "tag:transport_subsidy",
+      "target": "promo:promo-manheim-2a7427",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_36",
+      "source": "tag:transport_subsidy",
+      "target": "promo:promo-aston-barclay-bcd871",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_37",
+      "source": "tag:fixed_rate_delivery",
+      "target": "promo:promo-motorway-bb6594",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_38",
+      "source": "tag:collection_service",
+      "target": "promo:promo-bca-a7083b",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_39",
+      "source": "tag:collection_service",
+      "target": "promo:promo-carwow-d6ad87",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_40",
+      "source": "tag:collection_service",
+      "target": "promo:promo-manheim-2a7427",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_41",
+      "source": "tag:collection_service",
+      "target": "promo:promo-aston-barclay-bcd871",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_42",
+      "source": "tag:buyer_indemnity",
+      "target": "promo:promo-carwow-387392",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_43",
+      "source": "tag:buyer_indemnity",
+      "target": "promo:promo-carwow-d6ad87",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_44",
+      "source": "tag:buyer_indemnity",
+      "target": "promo:promo-manheim-2a7427",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_45",
+      "source": "tag:assured_inspection",
+      "target": "promo:promo-bca-a7083b",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_46",
+      "source": "tag:assured_inspection",
+      "target": "promo:promo-manheim-2a7427",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_47",
+      "source": "tag:assured_inspection",
+      "target": "promo:promo-dealer-auction-484ddd",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_48",
+      "source": "tag:assured_inspection",
+      "target": "promo:promo-aston-barclay-bcd871",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_49",
+      "source": "tag:fault_guarantee",
+      "target": "promo:promo-bca-a7083b",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_50",
+      "source": "tag:fault_guarantee",
+      "target": "promo:promo-carwow-387392",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_51",
+      "source": "tag:fault_guarantee",
+      "target": "promo:promo-manheim-2a7427",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_52",
+      "source": "tag:fault_guarantee",
+      "target": "promo:promo-dealer-auction-484ddd",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_53",
+      "source": "tag:fault_guarantee",
+      "target": "promo:promo-aston-barclay-bcd871",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_54",
+      "source": "tag:sign_up_bonus",
+      "target": "promo:promo-dealer-auction-484ddd",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_55",
+      "source": "tag:trader_onboarding",
+      "target": "promo:promo-carwow-387392",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_56",
+      "source": "tag:trader_onboarding",
+      "target": "promo:promo-dealer-auction-484ddd",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_57",
+      "source": "tag:extended_bidding_window",
+      "target": "promo:promo-motorway-bb6594",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_58",
+      "source": "tag:extended_bidding_window",
+      "target": "promo:promo-aston-barclay-bcd871",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_59",
+      "source": "tag:hidden_reserve",
+      "target": "promo:promo-carwow-387392",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_60",
+      "source": "tag:instant_settlement",
+      "target": "promo:promo-motorway-bb6594",
+      "edge_type": "TAGS",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_61",
+      "source": "promo:promo-bca-a7083b",
+      "target": "comp:bca",
+      "edge_type": "OFFERED_BY",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_62",
+      "source": "promo:promo-bca-a7083b",
+      "target": "tag:tier_volume_discount",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_63",
+      "source": "promo:promo-bca-a7083b",
+      "target": "tag:buyer_fee_discount",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_64",
+      "source": "promo:promo-bca-a7083b",
+      "target": "tag:transport_subsidy",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_65",
+      "source": "promo:promo-bca-a7083b",
+      "target": "tag:collection_service",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_66",
+      "source": "promo:promo-bca-a7083b",
+      "target": "tag:assured_inspection",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_67",
+      "source": "promo:promo-bca-a7083b",
+      "target": "tag:fault_guarantee",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_68",
+      "source": "promo:promo-motorway-bb6594",
+      "target": "comp:motorway",
+      "edge_type": "OFFERED_BY",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_69",
+      "source": "promo:promo-motorway-bb6594",
+      "target": "tag:transport_subsidy",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_70",
+      "source": "promo:promo-motorway-bb6594",
+      "target": "tag:fixed_rate_delivery",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_71",
+      "source": "promo:promo-motorway-bb6594",
+      "target": "tag:buyer_fee_discount",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_72",
+      "source": "promo:promo-motorway-bb6594",
+      "target": "tag:subscription_free",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_73",
+      "source": "promo:promo-motorway-bb6594",
+      "target": "tag:instant_settlement",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_74",
+      "source": "promo:promo-motorway-bb6594",
+      "target": "tag:extended_bidding_window",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_75",
+      "source": "promo:promo-carwow-387392",
+      "target": "comp:carwow",
+      "edge_type": "OFFERED_BY",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_76",
+      "source": "promo:promo-carwow-387392",
+      "target": "tag:fault_guarantee",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_77",
+      "source": "promo:promo-carwow-387392",
+      "target": "tag:buyer_indemnity",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_78",
+      "source": "promo:promo-carwow-387392",
+      "target": "tag:hidden_reserve",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_79",
+      "source": "promo:promo-carwow-387392",
+      "target": "tag:buyer_fee_discount",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_80",
+      "source": "promo:promo-carwow-387392",
+      "target": "tag:trader_onboarding",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_81",
+      "source": "promo:promo-carwow-d6ad87",
+      "target": "comp:carwow",
+      "edge_type": "OFFERED_BY",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_82",
+      "source": "promo:promo-carwow-d6ad87",
+      "target": "tag:transport_subsidy",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_83",
+      "source": "promo:promo-carwow-d6ad87",
+      "target": "tag:collection_service",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_84",
+      "source": "promo:promo-carwow-d6ad87",
+      "target": "tag:buyer_indemnity",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_85",
+      "source": "promo:promo-carwow-d6ad87",
+      "target": "tag:subscription_free",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_86",
+      "source": "promo:promo-manheim-2a7427",
+      "target": "comp:manheim",
+      "edge_type": "OFFERED_BY",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_87",
+      "source": "promo:promo-manheim-2a7427",
+      "target": "tag:tier_volume_discount",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_88",
+      "source": "promo:promo-manheim-2a7427",
+      "target": "tag:buyer_fee_discount",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_89",
+      "source": "promo:promo-manheim-2a7427",
+      "target": "tag:subscription_free",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_90",
+      "source": "promo:promo-manheim-2a7427",
+      "target": "tag:transport_subsidy",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_91",
+      "source": "promo:promo-manheim-2a7427",
+      "target": "tag:collection_service",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_92",
+      "source": "promo:promo-manheim-2a7427",
+      "target": "tag:assured_inspection",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_93",
+      "source": "promo:promo-manheim-2a7427",
+      "target": "tag:fault_guarantee",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_94",
+      "source": "promo:promo-manheim-2a7427",
+      "target": "tag:buyer_indemnity",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_95",
+      "source": "promo:promo-dealer-auction-484ddd",
+      "target": "comp:dealer-auction",
+      "edge_type": "OFFERED_BY",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_96",
+      "source": "promo:promo-dealer-auction-484ddd",
+      "target": "tag:buyer_fee_discount",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_97",
+      "source": "promo:promo-dealer-auction-484ddd",
+      "target": "tag:subscription_free",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_98",
+      "source": "promo:promo-dealer-auction-484ddd",
+      "target": "tag:sign_up_bonus",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_99",
+      "source": "promo:promo-dealer-auction-484ddd",
+      "target": "tag:trader_onboarding",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_100",
+      "source": "promo:promo-dealer-auction-484ddd",
+      "target": "tag:assured_inspection",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_101",
+      "source": "promo:promo-dealer-auction-484ddd",
+      "target": "tag:fault_guarantee",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_102",
+      "source": "promo:promo-aston-barclay-bcd871",
+      "target": "comp:aston-barclay",
+      "edge_type": "OFFERED_BY",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_103",
+      "source": "promo:promo-aston-barclay-bcd871",
+      "target": "tag:tier_volume_discount",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_104",
+      "source": "promo:promo-aston-barclay-bcd871",
+      "target": "tag:buyer_fee_discount",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_105",
+      "source": "promo:promo-aston-barclay-bcd871",
+      "target": "tag:transport_subsidy",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_106",
+      "source": "promo:promo-aston-barclay-bcd871",
+      "target": "tag:collection_service",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_107",
+      "source": "promo:promo-aston-barclay-bcd871",
+      "target": "tag:assured_inspection",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_108",
+      "source": "promo:promo-aston-barclay-bcd871",
+      "target": "tag:fault_guarantee",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  },
+  {
+    "data": {
+      "id": "edge_109",
+      "source": "promo:promo-aston-barclay-bcd871",
+      "target": "tag:extended_bidding_window",
+      "edge_type": "TAGGED_WITH",
+      "name": "",
+      "notes": ""
+    }
+  }
+];
+
+    // Cytoscape initialization
+    const cy = cytoscape({
+      container: document.getElementById('cy'),
+      elements: GRAPH_ELEMENTS,
+      style: [
+        {
+          selector: 'node',
+          style: {
+            'label': 'data(label)',
+            'color': '#f8fafc',
+            'font-size': '11px',
+            'font-family': 'system-ui, -apple-system, sans-serif',
+            'text-valign': 'bottom',
+            'text-margin-y': 5,
+            'background-color': '#64748b',
+            'text-outline-color': '#0b0f19',
+            'text-outline-width': 2,
+            'border-width': 2,
+            'border-color': '#334155',
+            'transition-property': 'background-color, border-color, opacity, shadow-blur',
+            'transition-duration': '0.2s'
+          }
+        },
+        {
+          selector: 'node[node_type="corporate_group"]',
+          style: {
+            'shape': 'hexagon',
+            'background-color': '#8b5cf6',
+            'border-color': '#a78bfa',
+            'width': 50,
+            'height': 50,
+            'font-weight': 'bold',
+            'font-size': '12px'
+          }
+        },
+        {
+          selector: 'node[node_type="competitor"]',
+          style: {
+            'shape': 'round-rectangle',
+            'background-color': '#0284c7',
+            'border-color': '#38bdf8',
+            'width': 44,
+            'height': 44,
+            'font-weight': 'bold',
+            'font-size': '12px'
+          }
+        },
+        {
+          selector: 'node[node_type="promotion"]',
+          style: {
+            'shape': 'ellipse',
+            'background-color': '#10b981',
+            'border-color': '#34d399',
+            'width': 34,
+            'height': 34
+          }
+        },
+        {
+          selector: 'node[node_type="tag"]',
+          style: {
+            'shape': 'diamond',
+            'background-color': '#f59e0b',
+            'border-color': '#fbbf24',
+            'width': 26,
+            'height': 26,
+            'font-size': '10px'
+          }
+        },
+        {
+          selector: 'edge',
+          style: {
+            'width': 2,
+            'line-color': '#334155',
+            'target-arrow-color': '#334155',
+            'target-arrow-shape': 'triangle',
+            'curve-style': 'bezier',
+            'arrow-scale': 0.8
+          }
+        },
+        {
+          selector: 'edge[edge_type="OFFERS"]',
+          style: {
+            'line-color': '#0284c7',
+            'target-arrow-color': '#0284c7',
+            'width': 2.5
+          }
+        },
+        {
+          selector: 'edge[edge_type="TAGGED_WITH"]',
+          style: {
+            'line-color': '#d97706',
+            'target-arrow-color': '#d97706',
+            'line-style': 'dotted',
+            'width': 1.5
+          }
+        },
+        {
+          selector: 'edge[edge_type="MEMBER_OF"]',
+          style: {
+            'line-color': '#8b5cf6',
+            'target-arrow-color': '#8b5cf6',
+            'width': 2.5
+          }
+        },
+        {
+          selector: 'edge[edge_type="SYNERGY"]',
+          style: {
+            'line-color': '#ec4899',
+            'target-arrow-color': '#ec4899',
+            'line-style': 'dashed',
+            'width': 2.5
+          }
+        },
+        {
+          selector: '.highlighted',
+          style: {
+            'border-color': '#38bdf8',
+            'border-width': 4,
+            'shadow-blur': 16,
+            'shadow-color': '#38bdf8',
+            'shadow-opacity': 0.9,
+            'z-index': 99
+          }
+        },
+        {
+          selector: '.dimmed',
+          style: {
+            'opacity': 0.15
+          }
+        }
+      ],
+      layout: {
+        name: 'cose',
+        animate: true,
+        animationDuration: 700,
+        nodeRepulsion: 9000,
+        idealEdgeLength: 70
+      }
+    });
+
+    // Sidebar & Selection Handling
+    const sidebar = document.getElementById('sidebar');
+    const sidebarContent = document.getElementById('sidebar-content');
+
+    function selectNode(node) {
+      cy.elements().removeClass('highlighted dimmed');
+      const neighborhood = node.closedNeighborhood();
+      cy.elements().difference(neighborhood).addClass('dimmed');
+      node.addClass('highlighted');
+
+      const data = node.data();
+      renderSidebar(data, node);
+      sidebar.style.display = 'block';
+    }
+
+    function renderSidebar(data, node) {
+      const typeClass = 'type-' + data.node_type;
+      let html = `
+        <div class="node-header">
+          <span class="node-type-pill ${typeClass}">${data.node_type.replace('_', ' ')}</span>
+          <h2 class="node-title">${data.name || data.title || data.id}</h2>
+        </div>
+      `;
+
+      html += `<table class="meta-table">`;
+      html += `<tr><td>Node ID</td><td><code>${data.id}</code></td></tr>`;
+      
+      if (data.status) html += `<tr><td>Status</td><td><span class="badge" style="background:#065f46;color:#a7f3d0">${data.status}</span></td></tr>`;
+      if (data.valid_until) html += `<tr><td>Valid Until</td><td>${data.valid_until}</td></tr>`;
+      if (data.competitor) html += `<tr><td>Competitor</td><td><strong>${data.competitor.toUpperCase()}</strong></td></tr>`;
+      if (data.category) html += `<tr><td>Category</td><td>${data.category}</td></tr>`;
+      if (data.canonical_url) html += `<tr><td>Canonical URL</td><td><a href="${data.canonical_url}" target="_blank">Open Link &nearr;</a></td></tr>`;
+      if (data.filepath) html += `<tr><td>Source File</td><td><code>${data.filepath}</code></td></tr>`;
+      html += `</table>`;
+
+      // Render Markdown if available
+      if (data.raw_body) {
+        const rendered = marked.parse(data.raw_body);
+        html += `<div class="markdown-body">${rendered}</div>`;
+      } else if (data.description) {
+        html += `<div class="markdown-body"><p>${data.description}</p></div>`;
+      }
+
+      // Connections List
+      const neighbors = node.neighborhood().nodes();
+      if (neighbors.length > 0) {
+        html += `<div class="connections-section"><h4>Connected Concepts (${neighbors.length})</h4>`;
+        neighbors.forEach(n => {
+          const nd = n.data();
+          const lbl = nd.name || nd.title || nd.id;
+          html += `<span class="conn-pill" onclick="window.focusNodeById('${nd.id}')">${lbl}</span>`;
+        });
+        html += `</div>`;
+      }
+
+      sidebarContent.innerHTML = html;
+    }
+
+    window.focusNodeById = function(nodeId) {
+      const n = cy.getElementById(nodeId);
+      if (n && n.length > 0) {
+        cy.animate({
+          center: { eles: n },
+          zoom: 1.4,
+          duration: 400
+        });
+        selectNode(n);
+      }
+    };
+
+    cy.on('tap', 'node', function(evt) {
+      selectNode(evt.target);
+    });
+
+    cy.on('tap', function(evt) {
+      if (evt.target === cy) {
+        cy.elements().removeClass('highlighted dimmed');
+        sidebar.style.display = 'none';
+      }
+    });
+
+    document.getElementById('btn-close').addEventListener('click', () => {
+      cy.elements().removeClass('highlighted dimmed');
+      sidebar.style.display = 'none';
+    });
+
+    // Search Filtering
+    const searchInput = document.getElementById('search');
+    searchInput.addEventListener('input', function() {
+      const q = this.value.trim().toLowerCase();
+      if (!q) {
+        cy.elements().removeClass('highlighted dimmed');
+        return;
+      }
+      cy.elements().addClass('dimmed').removeClass('highlighted');
+      const matches = cy.nodes().filter(n => {
+        const d = n.data();
+        const str = ((d.label || '') + ' ' + (d.title || '') + ' ' + (d.name || '') + ' ' + (d.summary || '')).toLowerCase();
+        return str.includes(q);
+      });
+      matches.removeClass('dimmed').addClass('highlighted');
+    });
+
+    // Layout Selector
+    document.getElementById('layout-select').addEventListener('change', function() {
+      const l = cy.layout({ name: this.value, animate: true, animationDuration: 600 });
+      l.run();
+    });
+
+    document.getElementById('btn-fit').addEventListener('click', () => cy.fit(null, 40));
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      searchInput.value = '';
+      cy.elements().removeClass('highlighted dimmed');
+      sidebar.style.display = 'none';
+      cy.fit(null, 40);
+    });
+  </script>
+</body>
+</html>
