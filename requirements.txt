@@ -1,0 +1,8 @@
+# Core graph traversal & indexing engine
+networkx>=3.0
+
+# Gemini API & Managed Agents SDK
+google-genai>=2.0.0
+
+# Environment variable management
+python-dotenv>=1.0.0

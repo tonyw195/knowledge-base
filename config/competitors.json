@@ -1,0 +1,80 @@
+{
+  "bca": {
+    "name": "British Car Auctions",
+    "slug": "bca",
+    "primary_url": "https://www.bca.co.uk/",
+    "buyer_portal_url": "https://www.bca.co.uk/buying/buying-with-bca",
+    "news_url": "https://www.bca.co.uk/news",
+    "socials": {
+      "linkedin": "https://www.linkedin.com/company/bca-europe/posts/?feedView=all",
+      "x": "https://x.com/BCA_Auctions",
+      "facebook": "https://www.facebook.com/BritishCarAuctions"
+    },
+    "priority_channels": ["linkedin", "news_url"]
+  },
+  "carwow": {
+    "name": "Carwow (Dealer / B2B Division)",
+    "slug": "carwow",
+    "primary_url": "https://www.carwow.co.uk/",
+    "buyer_portal_url": "https://www.carwow.co.uk/partners/auctions",
+    "news_url": "https://www.carwow.co.uk/sell-my-car/dealer-news",
+    "socials": {
+      "linkedin": "https://www.linkedin.com/company/carwow/posts/?feedView=all",
+      "x": "https://x.com/carwowuk",
+      "facebook": "https://www.facebook.com/carwowuk"
+    },
+    "priority_channels": ["linkedin", "news_url"]
+  },
+  "dealer-auction": {
+    "name": "Dealer Auction",
+    "slug": "dealer-auction",
+    "primary_url": "https://www.dealerauction.co.uk/about-us/",
+    "buyer_portal_url": "https://www.dealerauction.co.uk/about-us/for-buyers",
+    "news_url": "https://www.dealerauction.co.uk/news/",
+    "socials": {
+      "linkedin": "https://www.linkedin.com/company/dealer-auction-co-uk/posts/?feedView=all",
+      "x": "https://x.com/DealerAuctionUK"
+    },
+    "priority_channels": ["linkedin", "buyer_portal_url"]
+  },
+  "motorway": {
+    "name": "Motorway (Pro for Dealers)",
+    "slug": "motorway",
+    "primary_url": "https://pro.motorway.co.uk/",
+    "buyer_portal_url": "https://pro.motorway.co.uk/signup",
+    "news_url": "https://motorway.co.uk/press",
+    "blog_url": "https://motorway.co.uk/blog",
+    "socials": {
+      "linkedin": "https://www.linkedin.com/company/motorway-online-ltd./posts/?feedView=all",
+      "x": "https://x.com/motorway",
+      "facebook": "https://www.facebook.com/motorway.co.uk"
+    },
+    "priority_channels": ["linkedin", "news_url", "blog_url"]
+  },
+  "manheim": {
+    "name": "Manheim / Cox Automotive UK",
+    "slug": "manheim",
+    "primary_url": "https://www.manheim.co.uk/",
+    "buyer_portal_url": "https://www.manheim.co.uk/buying/buyer-fees",
+    "news_url": "https://www.coxautoinc.eu/",
+    "socials": {
+      "linkedin": "https://www.linkedin.com/company/cox-automotive-uk",
+      "x": "https://x.com/ManheimUK",
+      "facebook": "https://www.facebook.com/ManheimUK"
+    },
+    "priority_channels": ["linkedin", "buyer_portal_url"]
+  },
+  "aston-barclay": {
+    "name": "Aston Barclay",
+    "slug": "aston-barclay",
+    "primary_url": "https://www.astonbarclay.net/",
+    "buyer_portal_url": "https://www.astonbarclay.net/services/buying-with-aston-barclay",
+    "news_url": "https://www.astonbarclay.net/news",
+    "socials": {
+      "linkedin": "https://www.linkedin.com/company/aston-barclay-group",
+      "x": "https://x.com/AstonBarclay",
+      "facebook": "https://www.facebook.com/AstonBarclayUK"
+    },
+    "priority_channels": ["linkedin", "news_url"]
+  }
+}
