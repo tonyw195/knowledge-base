@@ -1,5 +1,5 @@
 # Active Competitive Incentives Manifest
-> Last Full Scan: 2026-09-25T17:42:00Z (Carwow Sweep)
+> Last Full Scan: 2026-09-29T10:48:31Z (Carwow Sweep)
 
 | Competitor | Promo Title | Canonical URL | Date Observed | Valid Until | Status | File Path |
 |---|---|---|---|---|---|---|
@@ -10,4 +10,8 @@
 | Aston Barclay | Aston Barclay Tiered Buyer Fees, Assured Guarantee & BCA Integration | https://www.astonbarclay.net/ | 2026-09-23 | 2026-12-31 | active | okf-repository/competitors/aston-barclay/promo-aston-barclay-bcd871.md |
 | Manheim | Manheim Advantage Club Tiers, SureCheck 7-Day Guarantee & Logistics | https://www.manheim.co.uk/ | 2026-09-23 | 2026-12-31 | active | okf-repository/competitors/manheim/promo-manheim-2a7427.md |
 | Carwow | Carwow BuySafe Mechanical Protection, Reserve-Free Bidding & Retail Listings | https://www.carwow.co.uk/partners/buysafe | 2026-09-25 | 2026-12-31 | active | okf-repository/competitors/carwow/promo-carwow-387392.md |
+| Carwow | Carwow Collects Transport Rate Reduction & Assured Scheme | https://www.carwow.co.uk/partners/carwow-collects | 2026-09-29 | 2027-12-31 | active | okf-repository/competitors/carwow/promo-carwow-c011ec75.md |
+| Carwow | Carwow BuySafe Post-Sale Mechanical & Electrical Fault Guarantee | https://www.carwow.co.uk/partners/buy-safe | 2026-09-29 | 2027-12-31 | active | okf-repository/competitors/carwow/promo-carwow-b59fe21a.md |
+| Carwow | Carwow Remarketing Auctions: Zero Subscription & Embedded Settlement | https://www.carwow.co.uk/partners/auctions | 2026-09-29 | 2027-12-31 | active | okf-repository/competitors/carwow/promo-carwow-a419ef02.md |
+| Carwow | Carwow IMDA Trade Partnership: 75% First Buyer Fee Waiver | https://www.carwow.co.uk/partners/imda | 2026-09-29 | 2026-12-31 | active | okf-repository/competitors/carwow/promo-carwow-imda75d8.md |
 
